@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Game Launcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #181c23;
+      --accent: #00ffd0;
+      --accent-glow: 0 0 16px #00ffd0, 0 0 32px #00ffd088;
+      --panel: #232834;
+      --danger: #ff0066;
+      --text: #f2f4f8;
+      --secondary: #4e566e;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .launcher-header {
+      background: var(--panel);
+      box-shadow: var(--accent-glow);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--accent);
+    }
+    .launcher-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent);
+      user-select: none;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .file-input {
+      display: none;
+    }
+    .btn {
+      background: var(--panel);
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--accent);
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      outline: none;
+    }
+    .btn:hover, .btn:focus {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    .game-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #181c23 60%, #212836 100%);
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .game-frame {
+      width: 80vw;
+      height: 70vh;
+      max-width: 1200px;
+      max-height: 80vh;
+      background: #000;
+      border: 3px solid var(--accent);
+      border-radius: 14px;
+      box-shadow: 0 0 32px var(--accent);
+      transition: box-shadow 0.2s, border 0.2s;
+      display: none;
+    }
+    .game-frame.active {
+      display: block;
+      animation: fadein 0.3s;
+    }
+    @keyframes fadein {
+      from { opacity: 0; transform: scale(0.98);}
+      to { opacity: 1; transform: scale(1);}
+    }
+    .status-bar {
+      position: absolute;
+      left: 24px;
+      bottom: 24px;
+      background: rgba(24,30,40,0.92);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.4em 1em;
+      font-size: 1em;
+      box-shadow: 0 0 10px var(--accent);
+      pointer-events: none;
+      opacity: 0.95;
+      user-select: none;
+      z-index: 100;
+      display: none;
+    }
+    .status-bar.visible {
+      display: block;
+    }
+    .glow {
+      text-shadow: 0 0 8px var(--accent), 0 0 2px var(--accent);
+    }
+    @media (max-width: 800px) {
+      .game-frame {
+        width: 98vw;
+        height: 55vw;
+        max-width: 98vw;
+        max-height: 60vh;
+      }
+    }
+    @media (max-width: 600px) {
+      .game-frame {
+        width: 100vw;
+        height: 55vw;
+        border-radius: 0;
+        border-width: 2px;
+      }
+      .launcher-header {
+        flex-direction: column;
+        gap: 0.5em;
+        padding: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="launcher-header">
+    <div class="launcher-title glow">Eaglercraft Launcher</div>
+    <div class="controls">
+      <label class="btn" for="fileInput">Load Game</label>
+      <input id="fileInput" class="file-input" type="file" accept=".html,.htm">
+      <button class="btn" id="fullscreenBtn" title="Toggle Fullscreen">Fullscreen</button>
+    </div>
+  </div>
+
+  <div class="game-container">
+    <iframe id="gameFrame" class="game-frame" allowfullscreen tabindex="0"></iframe>
+    <div class="status-bar" id="statusBar">No game loaded</div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const gameFrame = document.getElementById('gameFrame');
+    const statusBar = document.getElementById('statusBar');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    let currentFileUrl = null;
+
+    // Show status 
+    function showStatus(msg, ms = 2000) {
+      statusBar.textContent = msg;
+      statusBar.classList.add('visible');
+      if (ms) setTimeout(() => statusBar.classList.remove('visible'), ms);
+    }
+
+    // Load file into iframe
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      if (!file.name.endsWith('.html') && !file.name.endsWith('.htm')) {
+        showStatus('Please select a valid HTML game file', 3000);
+        return;
+      }
+      if (currentFileUrl) URL.revokeObjectURL(currentFileUrl);
+      currentFileUrl = URL.createObjectURL(file);
+      gameFrame.src = currentFileUrl;
+      gameFrame.classList.add('active');
+      showStatus(`Loaded: ${file.name}`);
+    });
+
+    // Fullscreen logic
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        gameFrame.requestFullscreen?.();
+      } else if (document.fullscreenElement === gameFrame) {
+        document.exitFullscreen?.();
+      }
+    });
+
+    // Detect fullscreen change
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement === gameFrame) {
+        fullscreenBtn.textContent = 'Exit Fullscreen';
+        showStatus('Game in fullscreen (press ESC to exit)', 1500);
+      } else {
+        fullscreenBtn.textContent = 'Fullscreen';
+        showStatus('Exited fullscreen', 1000);
+      }
+    });
+
+    // Show controls activation on click
+    gameFrame.addEventListener('load', () => {
+      showStatus('Click inside the game to activate controls', 2500);
+      gameFrame.focus();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'F5') {
+        // Reload game
+        if (currentFileUrl) {
+          gameFrame.src = currentFileUrl;
+          showStatus('Game reset');
+          e.preventDefault();
+        }
+      }
+      if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+        fullscreenBtn.click();
+        e.preventDefault();
+      }
+    });
+  </script>
+</body>
+</html>
